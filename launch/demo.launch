@@ -1,0 +1,10 @@
+<launch>
+  <node name="mono2stereo" pkg="mono2stereo" type="m2s" output="screen" >
+    <param name="image_topic" value="/bebop/image_raw" />
+    <param name="odom_topic" value="/bebop/odom" />
+    <param name="image_width" value="856" />
+    <param name="image_height" value="480" />
+    <param name="camera_info_url" value="file://$(find mono2stereo)/camera.yaml"/>
+    <param name="camera_name" value="bebop_front"/>
+  </node>
+</launch>
