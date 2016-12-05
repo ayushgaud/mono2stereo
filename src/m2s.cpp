@@ -36,42 +36,52 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
     ci_r->header.frame_id = msg->header.frame_id;
     ci_r->header.stamp = msg->header.stamp;
 
-    //tf::Vector3 tl(odom.pose.pose.position.x, odom.pose.pose.position.y, odom.pose.pose.position.z);
-    tf::Vector3 tl(-odom.pose.pose.position.y, -odom.pose.pose.position.z, odom.pose.pose.position.x);
+    // tf::Vector3 tl(odom.pose.pose.position.x, odom.pose.pose.position.y, odom.pose.pose.position.z);
+    // //tf::Vector3 tl_trans(-odom.pose.pose.position.y, -odom.pose.pose.position.z, odom.pose.pose.position.x);
     tf::Vector3 position;
     
-    tf::Quaternion qt(odom.pose.pose.orientation.x, odom.pose.pose.orientation.y, odom.pose.pose.orientation.z, odom.pose.pose.orientation.w);
-    double roll, pitch, yaw;
-    tf::Matrix3x3(qt).getRPY(roll, pitch, yaw);
-    tf::Quaternion qt_trans;
-    qt_trans.setRPY(-pitch,-yaw,roll);
- 
-//     tf::TransformListener listener;
-//     tf::StampedTransform transform;
-//     try{
-// listener.waitForTransform("/openni_camera", "/world", ros::Time(0), ros::Duration(2.0) );
-//       listener.lookupTransform("/openni_camera","/world",  
-//                                ros::Time(0), transform);
-//     }
-//     catch (tf::TransformException ex){
-//       ROS_ERROR("%s",ex.what());
-//       ros::Duration(0.2).sleep();
-//     }
-//     new_pose.setOrigin(transform.getOrigin());
-//     new_pose.setRotation(transform.getRotation());
+    // tf::Quaternion qt(odom.pose.pose.orientation.x, odom.pose.pose.orientation.y, odom.pose.pose.orientation.z, odom.pose.pose.orientation.w);
+    // double roll, pitch, yaw; Nodes
 
-    new_pose.setOrigin(tl);
-    new_pose.setRotation(qt_trans);
+
+    // tf::Matrix3x3(qt).getRPY(roll, pitch, yaw);
+    // tf::Quaternion qt_trans;
+    // qt_trans.setRPY(-pitch,-yaw,roll);
+    // new_pose.setOrigin(tl);
+    // new_pose.setRotation(qt);
+    tf::TransformListener listener;
+    tf::StampedTransform transform;
+    try{
+listener.waitForTransform("/camera_optical", "/odom", ros::Time(0), ros::Duration(0.2) );
+      listener.lookupTransform("/camera_optical", "/odom",  
+                               ros::Time(0), transform);
+    }
+    catch (tf::TransformException ex){
+      ROS_ERROR("%s",ex.what());
+    }
+    new_pose.setOrigin(transform.getOrigin());
+    new_pose.setRotation(transform.getRotation());
+
+
     if (!flag_1){
       old_pose = new_pose;
       ROS_INFO("old_pose init!");
       flag_1 = true;
     }
     trans = new_pose.inverseTimes(old_pose);
+    tf::Vector3 tl(trans.getOrigin());
+    tf::Vector3 tl_trans(-tl[1], -tl[2], tl[0]);
+    tf::Quaternion qt(trans.getRotation());
+    double roll, pitch, yaw;
+    tf::Matrix3x3(qt).getRPY(roll, pitch, yaw);
+    tf::Quaternion qt_trans;
+    qt_trans.setRPY(-pitch,-yaw,roll);
+    // new_pose.setOrigin(tl_trans);
+    // new_pose.setRotation(qt_trans);
 
-    tf::Matrix3x3 tf_R = trans.getBasis();
-    tf::Vector3 tf_T = trans.getOrigin();
-    double r[3][3] = {{tf_R[0][0], tf_R[0][1], tf_R[0][2]}, {tf_R[1][0], tf_R[1][1], tf_R[1][2]}, {tf_R[2][0], tf_R[2][1], tf_R[2][2]}};
+    tf::Matrix3x3 tf_R(qt_trans);
+    tf::Vector3 tf_T = tl_trans;
+    double r[3][3] = {{tf_R[0][0], tf_R[0][1], tf_R[0][2]}, {tf_R[1][0], tf_R[1][1], tf_R[1][2]}, {tf_R[2][0], tf_R[2][1], tf_R[2][2]}};//{{1,0,0},{0,1,0},{0,0,1}};//
     double t[3][1] = {{tf_T[0]}, {tf_T[1]}, {tf_T[2]}};
     double cm1[3][3] = {{ci_l->K[0], ci_l->K[1], ci_l->K[2]}, {ci_l->K[3], ci_l->K[4], ci_l->K[5]}, {ci_l->K[6], ci_l->K[7], ci_l->K[8]}};
     double cm2[3][3] = {{ci_r->K[0], ci_r->K[1], ci_r->K[2]}, {ci_r->K[3], ci_r->K[4], ci_r->K[5]}, {ci_r->K[6], ci_r->K[7], ci_r->K[8]}};
@@ -91,39 +101,39 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
     //ROS_INFO("Old Pos %f %f %f",tl2[0],tl2[1],tl2[2]);
     //ROS_INFO("New Pos %f %f %f",tl[0],tl[1],tl[2]);
     position = trans.getOrigin();
-    //ROS_INFO("Transform %f %f %f",position[0],position[1],position[2]);
+    ROS_INFO("Transform %f %f %f",position[0],position[1],position[2]);
     if ((std::abs(position[0])) > 0.1f && (std::abs(position[0]) + std::abs(position[1]) + std::abs(position[2]))!= 0)
     {
-      // std::cout << "CM1 = "<< std::endl << " "  << CM1 << std::endl << std::endl;
-      // std::cout << "CM2 = "<< std::endl << " "  << CM2 << std::endl << std::endl;
-      // std::cout << "D1 = "<< std::endl << " "  << D1 << std::endl << std::endl;
-      // std::cout << "D2 = "<< std::endl << " "  << D2 << std::endl << std::endl;
-      // std::cout << "R = "<< std::endl << " "  << R << std::endl << std::endl;
-      // std::cout << "T = "<< std::endl << " "  << T << std::endl << std::endl;   
+      std::cout << "CM1 = "<< std::endl << " "  << CM1 << std::endl << std::endl;
+      std::cout << "CM2 = "<< std::endl << " "  << CM2 << std::endl << std::endl;
+      std::cout << "D1 = "<< std::endl << " "  << D1 << std::endl << std::endl;
+      std::cout << "D2 = "<< std::endl << " "  << D2 << std::endl << std::endl;
+      std::cout << "R = "<< std::endl << " "  << R << std::endl << std::endl;
+      std::cout << "T = "<< std::endl << " "  << T << std::endl << std::endl;   
       cv::stereoRectify(CM1, D1, CM2, D2, s, R, T, R1, R2, P1, P2, Q);
-      // std::cout << "P1 = "<< std::endl << " "  << P1 << std::endl << std::endl;
-      // std::cout << "P2 = "<< std::endl << " "  << P2 << std::endl << std::endl;
-      // std::cout << "R1 = "<< std::endl << " "  << R1 << std::endl << std::endl;
-      // std::cout << "R2 = "<< std::endl << " "  << R2 << std::endl << std::endl;
-      ci_l->R[0] = R1.at<double>(0, 0);
-      ci_l->R[1] = R1.at<double>(0, 1);
-      ci_l->R[2] = R1.at<double>(0, 2);
-      ci_l->R[3] = R1.at<double>(1, 0);
-      ci_l->R[4] = R1.at<double>(1, 1);
-      ci_l->R[5] = R1.at<double>(1, 1);
-      ci_l->R[6] = R1.at<double>(2, 0);
-      ci_l->R[7] = R1.at<double>(2, 1);
-      ci_l->R[8] = R1.at<double>(2, 2);
+      std::cout << "P1 = "<< std::endl << " "  << P1 << std::endl << std::endl;
+      std::cout << "P2 = "<< std::endl << " "  << P2 << std::endl << std::endl;
+      std::cout << "R1 = "<< std::endl << " "  << R1 << std::endl << std::endl;
+      std::cout << "R2 = "<< std::endl << " "  << R2 << std::endl << std::endl;
+      // ci_l->R[0] = R1.at<double>(0, 0);
+      // ci_l->R[1] = R1.at<double>(0, 1);
+      // ci_l->R[2] = R1.at<double>(0, 2);
+      // ci_l->R[3] = R1.at<double>(1, 0);
+      // ci_l->R[4] = R1.at<double>(1, 1);
+      // ci_l->R[5] = R1.at<double>(1, 1);
+      // ci_l->R[6] = R1.at<double>(2, 0);
+      // ci_l->R[7] = R1.at<double>(2, 1);
+      // ci_l->R[8] = R1.at<double>(2, 2);
 
-      ci_r->R[0] = R2.at<double>(0, 0);
-      ci_r->R[1] = R2.at<double>(0, 1);
-      ci_r->R[2] = R2.at<double>(0, 2);
-      ci_r->R[3] = R2.at<double>(1, 0);
-      ci_r->R[4] = R2.at<double>(1, 1);
-      ci_r->R[5] = R2.at<double>(1, 1);
-      ci_r->R[6] = R2.at<double>(2, 0);
-      ci_r->R[7] = R2.at<double>(2, 1);
-      ci_r->R[8] = R2.at<double>(2, 2);
+      // ci_r->R[0] = R2.at<double>(0, 0);
+      // ci_r->R[1] = R2.at<double>(0, 1);
+      // ci_r->R[2] = R2.at<double>(0, 2);
+      // ci_r->R[3] = R2.at<double>(1, 0);
+      // ci_r->R[4] = R2.at<double>(1, 1);
+      // ci_r->R[5] = R2.at<double>(1, 1);
+      // ci_r->R[6] = R2.at<double>(2, 0);
+      // ci_r->R[7] = R2.at<double>(2, 1);
+      // ci_r->R[8] = R2.at<double>(2, 2);
 
       ci_l->P[0] = P1.at<double>(0, 0);
       ci_l->P[1] = P1.at<double>(0, 1);
