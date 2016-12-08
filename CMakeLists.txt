@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(mono2stereo)
-
+set(CMAKE_CXX_FLAGS_RELEASE "-Wall -O3 -msse4.2")
+set(CMAKE_BUILD_TYPE Release)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
@@ -11,6 +12,8 @@ find_package(catkin REQUIRED COMPONENTS
   nav_msgs
   camera_info_manager
   image_transport
+  tf
+  image_geometry
 )
 
 ## System dependencies are found with CMake's conventions
@@ -103,7 +106,7 @@ find_package(catkin REQUIRED COMPONENTS
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-#  INCLUDE_DIRS include
+  INCLUDE_DIRS include
 #  LIBRARIES mono2stereo
 #  CATKIN_DEPENDS cv_bridge roscpp std_msgs
 #  DEPENDS system_lib
@@ -117,7 +120,7 @@ catkin_package(
 ## Your package locations should be listed before other locations
 # include_directories(include)
 include_directories(
-  ${catkin_INCLUDE_DIRS}
+  ${catkin_INCLUDE_DIRS} include
 )
 
 ## Declare a C++ library
@@ -131,7 +134,7 @@ include_directories(
 # add_dependencies(mono2stereo ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Declare a C++ executable
- add_executable(m2s src/m2s.cpp)
+ add_executable(m2s src/m2s.cpp src/SGMStereo.cpp src/SPSStereo.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
@@ -139,8 +142,9 @@ include_directories(
 
 ## Specify libraries to link a library or executable target against
  target_link_libraries(m2s
-   ${catkin_LIBRARIES}
+   ${catkin_LIBRARIES} png
  )
+ target_compile_features(m2s PRIVATE cxx_range_for)
 
 #############
 ## Install ##
