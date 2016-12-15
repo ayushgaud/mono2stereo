@@ -65,13 +65,12 @@ void DepthImageCb(const sensor_msgs::ImageConstPtr& l_image_msg,
 {
   // Update the camera model
   model_.fromCameraInfo(l_info_msg, r_info_msg);
-
   // Calculate point cloud
   const sensor_msgs::Image& dimage = disp_msg->image;
   const cv::Mat_<float> dmat(dimage.height, dimage.width, (float*)&dimage.data[0], dimage.step);
   model_.projectDisparityImageTo3d(dmat, points_mat_, true);
   cv::Mat_<cv::Vec3f> mat = points_mat_;
-
+  //cv::imwrite("/home/ayush/point.jpg",points_mat_);
   sensor_msgs::ImagePtr depth_image(new sensor_msgs::Image());
 
   depth_image->header = disp_msg->header;
@@ -192,9 +191,9 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
     //ROS_INFO("New Pos %f %f %f",tl[0],tl[1],tl[2]);
     position = tl_trans;
     ROS_INFO("Transform %f %f %f",position[0],position[1],position[2]);
-    if ((std::abs(position[0])) > 0.1f && (std::abs(position[0]) + std::abs(position[1]) + std::abs(position[2]))!= 0)
+    if ((std::abs(position[0])) > 0.08f && (std::abs(position[0]) + std::abs(position[1]) + std::abs(position[2]))!= 0)
     {
-      if (position[0] < 0.2f)
+      if (std::abs(position[0]) < 0.25f)
       {
         // std::cout << "CM1 = "<< std::endl << " "  << CM1 << std::endl << std::endl;
         // std::cout << "CM2 = "<< std::endl << " "  << CM2 << std::endl << std::endl;
@@ -208,30 +207,30 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
         // std::cout << "P2 = "<< std::endl << " "  << P2 << std::endl << std::endl;
         // std::cout << "R1 = "<< std::endl << " "  << R1 << std::endl << std::endl;
         // std::cout << "R2 = "<< std::endl << " "  << R2 << std::endl << std::endl;
-        // ci_l->R[0] = R1.at<double>(0, 0);
-        // ci_l->R[1] = R1.at<double>(0, 1);
-        // ci_l->R[2] = R1.at<double>(0, 2);
-        // ci_l->R[3] = R1.at<double>(1, 0);
-        // ci_l->R[4] = R1.at<double>(1, 1);
-        // ci_l->R[5] = R1.at<double>(1, 1);
-        // ci_l->R[6] = R1.at<double>(2, 0);
-        // ci_l->R[7] = R1.at<double>(2, 1);
-        // ci_l->R[8] = R1.at<double>(2, 2);
+        ci_l->R[0] = R1.at<double>(0, 0);
+        ci_l->R[1] = R1.at<double>(0, 1);
+        ci_l->R[2] = R1.at<double>(0, 2);
+        ci_l->R[3] = R1.at<double>(1, 0);
+        ci_l->R[4] = R1.at<double>(1, 1);
+        ci_l->R[5] = R1.at<double>(1, 1);
+        ci_l->R[6] = R1.at<double>(2, 0);
+        ci_l->R[7] = R1.at<double>(2, 1);
+        ci_l->R[8] = R1.at<double>(2, 2);
 
-        // ci_r->R[0] = R2.at<double>(0, 0);
-        // ci_r->R[1] = R2.at<double>(0, 1);
-        // ci_r->R[2] = R2.at<double>(0, 2);
-        // ci_r->R[3] = R2.at<double>(1, 0);
-        // ci_r->R[4] = R2.at<double>(1, 1);
-        // ci_r->R[5] = R2.at<double>(1, 1);
-        // ci_r->R[6] = R2.at<double>(2, 0);
-        // ci_r->R[7] = R2.at<double>(2, 1);
-        // ci_r->R[8] = R2.at<double>(2, 2);
+        ci_r->R[0] = R2.at<double>(0, 0);
+        ci_r->R[1] = R2.at<double>(0, 1);
+        ci_r->R[2] = R2.at<double>(0, 2);
+        ci_r->R[3] = R2.at<double>(1, 0);
+        ci_r->R[4] = R2.at<double>(1, 1);
+        ci_r->R[5] = R2.at<double>(1, 1);
+        ci_r->R[6] = R2.at<double>(2, 0);
+        ci_r->R[7] = R2.at<double>(2, 1);
+        ci_r->R[8] = R2.at<double>(2, 2);
 
         ci_l->P[0] = P1.at<double>(0, 0);
         ci_l->P[1] = P1.at<double>(0, 1);
         ci_l->P[2] = P1.at<double>(0, 2);
-        ci_l->P[3] = P1.at<double>(0, 3);
+        ci_l->P[3] = P1.at<double>(0, 3);//-ci_l->K[0]*position[0];
         ci_l->P[4] = P1.at<double>(1, 0);
         ci_l->P[5] = P1.at<double>(1, 1);
         ci_l->P[6] = P1.at<double>(1, 2);
@@ -253,23 +252,23 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
         ci_r->P[9] = P2.at<double>(2, 1);
         ci_r->P[10] = P2.at<double>(2, 2);
         ci_r->P[11] = P2.at<double>(2, 3);
-        image_pub_2.publish(msg, ci_l);
+        
         if (flag)
           {
-            image_pub_1.publish(cv_ptr_old->toImageMsg(), ci_r);
+            if(position[0] > 0)
+            {
             //ROS_INFO("Reached 1"); 
             ConvertMatToPNG(cv_ptr_old->image, &rightImage);
             ConvertMatToPNG(cv_bridge::toCvShare(msg, "bgr8")->image, &leftImage);
-            leftImage.write("/home/ayush/left.png");
-            rightImage.write("/home/ayush/right.png");
+            // leftImage.write("/home/ayush/left.png");
+            // rightImage.write("/home/ayush/right.png");
             ROS_INFO("Reached 2");
 
             sps.compute(superpixelTotal, leftImage, rightImage, segmentImage, disparityImage, disparityPlaneParameters, boundaryLabels);
             cv::Mat cv_disparity;
             ROS_INFO("Reached 3");
             ConvertDispImageToCvMat8(disparityImage, &cv_disparity);
-            //ROS_INFO("Reached 4");
-            //cv::imshow("view",cv_disparity);
+            
             disp_msg->T                     = position[0];
             disp_msg->f                     = ci_l->K[0];
             disp_msg->delta_d               = 1.0 / 16;
@@ -285,6 +284,40 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
             cv::Mat_<float> dmat(dimage.height, dimage.width, reinterpret_cast<float*>(&dimage.data[0]), dimage.step);
             cv_disparity.convertTo(dmat,dmat.type());
             DepthImageCb(msg, ci_l, ci_r, disp_msg);
+            image_pub_2.publish(msg, ci_l);
+            image_pub_1.publish(cv_ptr_old->toImageMsg(), ci_r);
+          }
+          else
+          {
+            ConvertMatToPNG(cv_ptr_old->image, &leftImage);
+            ConvertMatToPNG(cv_bridge::toCvShare(msg, "bgr8")->image, &rightImage);
+            // leftImage.write("/home/ayush/left.png");
+            // rightImage.write("/home/ayush/right.png");
+            ROS_INFO("Reached 2");
+
+            sps.compute(superpixelTotal, leftImage, rightImage, segmentImage, disparityImage, disparityPlaneParameters, boundaryLabels);
+            cv::Mat cv_disparity;
+            ROS_INFO("Reached 3");
+            ConvertDispImageToCvMat8(disparityImage, &cv_disparity);
+            cv::imwrite("/home/ayush/disp.png",cv_disparity);
+            disp_msg->T                     = position[0];
+            disp_msg->f                     = ci_l->K[0];
+            disp_msg->delta_d               = 1.0 / 16;
+            disp_msg->header.stamp          = ros::Time::now();
+            disp_msg->header.frame_id       = "camera_optical"; 
+            //disp_msg->header.seq            = count++; //a counter, int type
+            sensor_msgs::Image& dimage = disp_msg->image;
+            dimage.width  = cv_disparity.size().width ;
+            dimage.height = cv_disparity.size().height ;
+            dimage.encoding = sensor_msgs::image_encodings::TYPE_32FC1;
+            dimage.step = dimage.width * sizeof(float);
+            dimage.data.resize(dimage.step * dimage.height);
+            cv::Mat_<float> dmat(dimage.height, dimage.width, reinterpret_cast<float*>(&dimage.data[0]), dimage.step);
+            cv_disparity.convertTo(dmat,dmat.type());
+            DepthImageCb(cv_ptr_old->toImageMsg(), ci_l, ci_r, disp_msg);
+            image_pub_2.publish(cv_ptr_old->toImageMsg(), ci_l);
+            image_pub_1.publish(msg, ci_r);
+          }
             //cv::waitKey(30);
             //ROS_INFO("Reached 5");
           }
@@ -319,8 +352,8 @@ int main(int argc, char **argv)
 {
   ros::init(argc, argv, "mono2stereo");
   ros::NodeHandle nh("~");
-  // cv::namedWindow("view");
-  // cv::startWindowThread();
+   // cv::namedWindow("view");
+   // cv::startWindowThread();
   image_transport::ImageTransport it(nh);
 
 
@@ -330,7 +363,7 @@ int main(int argc, char **argv)
   nh.param("camera_name", camera_name_, std::string("camera"));
   nh.param("camera_info_url", camera_info_url_, std::string(""));
   nh.param("image_width", image_width_, 640);
-  nh.param("image_height", image_height_, 480);
+  nh.param("image_height", image_height_, 368);
   ROS_INFO("camera: %s",camera_info_url_.c_str());
   
   image_transport::Subscriber sub = it.subscribe(image_topic_, 1, imageCallback);
@@ -367,7 +400,7 @@ int main(int argc, char **argv)
   sps.setPenaltyParameter(lambda_hinge, lambda_occ, lambda_pen);
 
   disp_msg->min_disparity = 0;
-  disp_msg->min_disparity = 63;
+  disp_msg->min_disparity = 32;
 
   // should be safe
   disp_msg->valid_window.x_offset = 0;
@@ -376,5 +409,5 @@ int main(int argc, char **argv)
   disp_msg->valid_window.height   = 0;
 
   ros::spin();
-  //cv::destroyWindow("view");
+  // cv::destroyWindow("view");
 }

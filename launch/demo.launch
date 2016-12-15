@@ -2,8 +2,8 @@
   <node name="mono2stereo" pkg="mono2stereo" type="m2s" output="screen" >
     <param name="image_topic" value="/bebop/image_raw" />
     <param name="odom_topic" value="/bebop/odom" />
-    <param name="image_width" value="856" />
-    <param name="image_height" value="480" />
+    <param name="image_width" value="640" />
+    <param name="image_height" value="368" />
     <param name="camera_info_url" value="file://$(find mono2stereo)/camera.yaml"/>
     <param name="camera_name" value="bebop_front"/>
   </node>
@@ -12,16 +12,29 @@
 
      <!-- Convert to point cloud -->
     <node pkg="nodelet" type="nodelet" name="cloudify"
-    args="load depth_image_proc/point_cloud_xyzrgb depth_transforms_manager --no-bond">
+    args="load depth_image_proc/point_cloud_xyzrgb depth_transforms_manager --no-bond queue_size=1">
 
         <!-- Input: Rectified depth image, registered to the RGB camera. -->
         <remap from="depth_registered/image_rect" to="/camera/depth_image"/> 
         <!-- Input: Rectified color image. -->
-        <remap from="rgb/image_rect_color" to="/camera/left/image_raw"/> 
+        <remap from="rgb/image_rect_color" to="/camera/right/image_raw"/> 
         <!-- Input: Camera calibration and metadata. --> 
-        <remap from="rgb/camera_info" to="/camera/left/camera_info"/>
+        <remap from="rgb/camera_info" to="/camera/right/camera_info"/>
         <!-- Output: XYZRGB point cloud. -->
         <remap from="depth_registered/points" to="camera/points"/>
     </node>
+<node pkg="nodelet" type="nodelet" name="pcl_manager" args="manager" output="screen" />
+
+  <!-- Run a VoxelGrid filter to clean NaNs and downsample the data -->
+  <node pkg="nodelet" type="nodelet" name="voxel_grid" args="load pcl/VoxelGrid pcl_manager" output="screen">
+    <remap from="~input" to="/camera/points" />
+    <rosparam>
+      filter_field_name: z
+      filter_limit_min: 0.01
+      filter_limit_max: 1.5
+      filter_limit_negative: False
+      leaf_size: 0.01
+    </rosparam>
+  </node>
     <node pkg="rviz" type="rviz" name="rviz" args="-d $(find mono2stereo)/launch/demo.rviz"/>
 </launch>
